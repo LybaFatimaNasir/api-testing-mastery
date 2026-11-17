@@ -1,0 +1,21 @@
+meta {
+  name: 09 - Get Stats Authenticated
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/stats
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalProducts: isDefined
+  res.body.totalInventoryValue: isDefined
+}

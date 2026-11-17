@@ -1,0 +1,14 @@
+{
+  "name": "product-catalog-api-express",
+  "version": "1.0.0",
+  "description": "Express.js reference implementation of REST API for testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "swagger-ui-express": "^5.0.0"
+  }
+}

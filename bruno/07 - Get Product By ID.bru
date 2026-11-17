@@ -1,0 +1,17 @@
+meta {
+  name: 07 - Get Product By ID
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/{{createdProductId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{createdProductId}}
+  res.body.name: eq Bruno Certified Mechanical Switchpad
+}

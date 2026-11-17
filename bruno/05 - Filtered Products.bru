@@ -1,0 +1,21 @@
+meta {
+  name: 05 - Filtered Products
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?category=Audio&limit=2
+  body: none
+  auth: none
+}
+
+params:query {
+  category: Audio
+  limit: 2
+}
+
+assert {
+  res.status: eq 200
+  res.body.items.length: lte 2
+}

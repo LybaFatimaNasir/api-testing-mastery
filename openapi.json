@@ -1,0 +1,484 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Product Catalog & Inventory API",
+    "description": "Production-grade RESTful API designed for comprehensive testing with Swagger UI, Bruno, and Postman. Features JWT/Bearer authentication, full CRUD operations, query filtering, pagination, and granular error handling.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Testing Masterclass",
+      "email": "learn@apitesting.local"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5055",
+      "description": "Local Development Server"
+    }
+  ],
+  "tags": [
+    { "name": "Authentication", "description": "Endpoints for user login and token generation" },
+    { "name": "Products", "description": "Product catalog and inventory management endpoints" },
+    { "name": "System", "description": "Health and system diagnostic endpoints" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["System"],
+        "summary": "API Root & Service Health",
+        "description": "Returns basic API information, health status, and links to documentation.",
+        "responses": {
+          "200": {
+            "description": "API is online and operational",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string", "example": "Product Catalog & Inventory API" },
+                    "status": { "type": "string", "example": "online" },
+                    "version": { "type": "string", "example": "1.0.0" },
+                    "docsUrl": { "type": "string", "example": "/docs" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User Login",
+        "description": "Authenticates user credentials and returns a Bearer authentication token. Default test credentials: username `admin`, password `password123`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login with access token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request body or missing required fields",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List All Products",
+        "description": "Retrieves a paginated list of products with optional filtering by search query, category, and price range.",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search term matching name or description",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by product category (e.g., Electronics, Accessories, Audio)",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "description": "Minimum price filter",
+            "required": false,
+            "schema": { "type": "number", "minimum": 0 }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "description": "Maximum price filter",
+            "required": false,
+            "schema": { "type": "number", "minimum": 0 }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (defaults to 1)",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (defaults to 10)",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "maximum": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of products",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaginatedProductsResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "summary": "Create New Product",
+        "description": "Adds a new product to the catalog. Requires Bearer Authentication token.",
+        "security": [
+          { "BearerAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProductRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully",
+            "headers": {
+              "Location": {
+                "description": "URL to the newly created product resource",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (missing title, invalid price, etc.)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get Product by ID",
+        "description": "Returns full details of a single product by its unique integer or string ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique product identifier",
+            "schema": { "type": "string", "example": "prod-101" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Products"],
+        "summary": "Update Product",
+        "description": "Updates fields of an existing product. Requires Bearer Authentication token.",
+        "security": [
+          { "BearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique product identifier",
+            "schema": { "type": "string", "example": "prod-101" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProductRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input format or price",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "summary": "Delete Product",
+        "description": "Deletes a product from the catalog by ID. Requires Bearer Authentication token.",
+        "security": [
+          { "BearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique product identifier",
+            "schema": { "type": "string", "example": "prod-101" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product successfully deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "Product prod-101 deleted successfully" },
+                    "id": { "type": "string", "example": "prod-101" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stats": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Catalog & System Statistics",
+        "description": "Retrieves aggregated catalog metrics (product count, total stock value, categories). Requires Bearer Authentication token.",
+        "security": [
+          { "BearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated catalog statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalProducts": { "type": "integer", "example": 8 },
+                    "totalInventoryValue": { "type": "number", "example": 14250.75 },
+                    "categories": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["Electronics", "Audio", "Accessories"]
+                    },
+                    "averagePrice": { "type": "number", "example": 149.99 }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized access",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter the Bearer token returned by /api/v1/auth/login. Format: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "required": ["id", "name", "price", "category", "inStock", "stockQuantity"],
+        "properties": {
+          "id": { "type": "string", "example": "prod-101" },
+          "name": { "type": "string", "example": "Wireless Noise-Canceling Headphones" },
+          "description": { "type": "string", "example": "Premium over-ear Bluetooth headphones with active noise cancellation." },
+          "price": { "type": "number", "format": "float", "example": 199.99 },
+          "category": { "type": "string", "example": "Audio" },
+          "inStock": { "type": "boolean", "example": true },
+          "stockQuantity": { "type": "integer", "example": 45 },
+          "createdAt": { "type": "string", "format": "date-time", "example": "2026-11-17T12:00:00Z" },
+          "updatedAt": { "type": "string", "format": "date-time", "example": "2026-11-17T12:00:00Z" }
+        }
+      },
+      "CreateProductRequest": {
+        "type": "object",
+        "required": ["name", "price", "category"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "example": "Mechanical Gaming Keyboard" },
+          "description": { "type": "string", "example": "RGB backlit mechanical keyboard with tactile brown switches." },
+          "price": { "type": "number", "minimum": 0.01, "example": 89.99 },
+          "category": { "type": "string", "example": "Accessories" },
+          "stockQuantity": { "type": "integer", "minimum": 0, "default": 10, "example": 30 },
+          "inStock": { "type": "boolean", "default": true, "example": true }
+        }
+      },
+      "UpdateProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "example": "Mechanical Gaming Keyboard v2" },
+          "description": { "type": "string", "example": "Updated with hot-swappable switches." },
+          "price": { "type": "number", "minimum": 0.01, "example": 99.99 },
+          "category": { "type": "string", "example": "Accessories" },
+          "stockQuantity": { "type": "integer", "minimum": 0, "example": 25 },
+          "inStock": { "type": "boolean", "example": true }
+        }
+      },
+      "PaginatedProductsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 24 },
+              "page": { "type": "integer", "example": 1 },
+              "limit": { "type": "integer", "example": 10 },
+              "totalPages": { "type": "integer", "example": 3 }
+            }
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "example": "admin" },
+          "password": { "type": "string", "example": "password123" }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "example": "demo-jwt-token-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.user-admin-12345" },
+          "tokenType": { "type": "string", "example": "Bearer" },
+          "expiresIn": { "type": "integer", "example": 3600 },
+          "user": {
+            "type": "object",
+            "properties": {
+              "username": { "type": "string", "example": "admin" },
+              "role": { "type": "string", "example": "administrator" }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "example": 400 },
+          "error": { "type": "string", "example": "Bad Request" },
+          "message": { "type": "string", "example": "The 'price' field must be a positive number." },
+          "timestamp": { "type": "string", "format": "date-time", "example": "2026-11-17T13:30:00Z" }
+        }
+      }
+    }
+  }
+}

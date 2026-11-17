@@ -1,0 +1,29 @@
+meta {
+  name: 08 - Update Product
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/v1/products/{{createdProductId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Bruno Certified Mechanical Switchpad (Edition 2)",
+    "price": 64.99,
+    "stockQuantity": 85
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Bruno Certified Mechanical Switchpad (Edition 2)
+  res.body.price: eq 64.99
+}
