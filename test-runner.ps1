@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # Automated API Test Suite Runner
 # ==============================================================================
 param(
@@ -214,3 +214,27 @@ Write-Host " PASSED      : $passedCount" -ForegroundColor Green
 Write-Host " FAILED      : $failedCount" -ForegroundColor $(if ($failedCount -eq 0) { "Green" } else { "Red" })
 Write-Host " SUCCESS RATE: $([Math]::Round(($passedCount / ($passedCount + $failedCount) * 100), 1))%"
 Write-Host "================================================================" -ForegroundColor Cyan
+
+# Output to GitHub Step Summary if running in GitHub Actions CI
+if ($env:GITHUB_STEP_SUMMARY) {
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.AppendLine("### 🧪 PowerShell Automated Test Suite Results")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("| # | Test Name | Status | Latency | Details |")
+    [void]$sb.AppendLine("|:---|:---|:---:|:---:|:---|")
+    $i = 1
+    foreach ($r in $script:testResults) {
+        $icon = if ($r.Status -eq "PASS") { "✅ PASS" } else { "❌ FAIL" }
+        [void]$sb.AppendLine("| $i | $($r.Name) | $icon | $($r.DurationMs)ms | $($r.Detail) |")
+        $i++
+    }
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("**Summary:** $($passedCount)/$($passedCount + $failedCount) Passed ($([Math]::Round(($passedCount / ($passedCount + $failedCount) * 100), 1))%)")
+    $sb.ToString() | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+}
+
+if ($failedCount -gt 0) {
+    exit 1
+} else {
+    exit 0
+}

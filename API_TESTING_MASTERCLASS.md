@@ -332,3 +332,44 @@ cd C:\Users\DC\.gemini\antigravity\scratch\api-testing-mastery
 .\test-runner.ps1
 ```
 Result: All 12 automated tests will execute with green pass indicators and latency benchmarks.
+
+---
+
+## 8. Module 8: Headless API Test Automation & CI/CD Pipelines
+
+While manual exploratory testing via Swagger UI and Postman/Bruno GUIs is essential during active development, **production-grade engineering teams mandate headless test automation**. In modern agile delivery, tests must execute automatically inside CI/CD pipelines without human supervision on every pull request and commit.
+
+```mermaid
+flowchart LR
+    Dev["Developer Git Push"] --> Trigger["GitHub Actions Trigger"]
+    Trigger --> Matrix{"Dual-Runner Matrix"}
+    Matrix --> Win["Windows Job\n(PowerShell Server)"]
+    Matrix --> Lin["Linux Job\n(Express Server)"]
+    Win --> Tests1["Newman + Bruno + PS1"]
+    Lin --> Tests2["Newman + Bruno"]
+    Tests1 --> Gate{"Quality Gate\n(100% Pass Required)"}
+    Tests2 --> Gate
+    Gate -->|All Pass| Report["Artifacts & Step Summary\n(HTML + JUnit Reports)"]
+    Gate -->|Any Fail| Block["Block PR / Halt Merge"]
+```
+
+### The Three Testing Engines in CI
+
+| Engine | Tool | Execution Command | Output Artifact |
+| :--- | :--- | :--- | :--- |
+| **Native Zero-Dependency** | PowerShell Core / Windows PS | `.\test-runner.ps1` | Console summary + GitHub Action Step Summary table |
+| **Postman Headless** | Newman CLI (`newman`) | `newman run postman/... -e postman/... --reporters cli,htmlextra,junit` | `newman-report.html`, `newman-junit.xml` |
+| **Bruno Headless** | Bruno CLI (`@usebruno/cli`) | `bru run bruno --env local` | Terminal output + JSON test logs |
+
+### Key Automation Concepts
+
+1. **Headless Execution:** Running collections without opening an electron desktop app or browser, using lightweight Node.js or native CLIs.
+2. **Environment Variable Injection:** Passing dynamic secrets (e.g., API keys, baseUrl) at runtime via CLI parameters rather than committing hardcoded credentials to git.
+3. **Automated Quality Gates:** Configuring CI steps to inspect exit codes: an exit code of `0` indicates 100% test pass, whereas any non-zero exit code immediately halts the deployment pipeline.
+4. **Rich Visual Reporting:** Generating self-contained HTML dashboards (via `newman-reporter-htmlextra`) containing request/response headers, response bodies, and timing distributions, uploaded as CI build artifacts.
+
+### Running the Complete Automation Pipeline Locally
+```powershell
+# Run the local all-in-one automation orchestrator
+.\run-automation-suite.ps1
+```

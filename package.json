@@ -1,0 +1,33 @@
+{
+  "name": "api-testing-mastery",
+  "version": "1.1.0",
+  "description": "Headless CI/CD Automation Suite for REST API Testing with Newman, Bruno CLI, and GitHub Actions",
+  "main": "express_alternative/server.js",
+  "scripts": {
+    "test:ps": "powershell -ExecutionPolicy Bypass -File ./test-runner.ps1",
+    "test:newman": "newman run postman/Products_API.postman_collection.json -e postman/Local_Environment.postman_environment.json --reporters cli",
+    "test:newman:ci": "newman run postman/Products_API.postman_collection.json -e postman/Local_Environment.postman_environment.json --reporters cli,junit,htmlextra --reporter-junit-export test-reports/newman-junit.xml --reporter-htmlextra-export test-reports/newman-report.html",
+    "test:bruno": "bru run bruno --env local",
+    "test:ci": "npm run test:newman:ci && npm run test:bruno",
+    "server:express": "node express_alternative/server.js",
+    "server:ps": "powershell -ExecutionPolicy Bypass -File ./server.ps1"
+  },
+  "keywords": [
+    "api-testing",
+    "rest-api",
+    "postman",
+    "bruno",
+    "newman",
+    "ci-cd",
+    "github-actions",
+    "swagger",
+    "openapi"
+  ],
+  "author": "Lyba Fatima Nasir",
+  "license": "MIT",
+  "devDependencies": {
+    "@usebruno/cli": "^1.39.1",
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

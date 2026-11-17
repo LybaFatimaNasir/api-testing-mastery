@@ -1,10 +1,12 @@
 # 🚀 API & API Testing Masterclass
-### Comprehensive REST API Testing Laboratory with Swagger UI, Bruno & Postman
+### Comprehensive REST API Testing Laboratory with Swagger UI, Bruno, Postman & CI/CD Automation
 
+[![API Test Automation](https://github.com/LybaFatimaNasir/api-testing-mastery/actions/workflows/api-automation.yml/badge.svg)](https://github.com/LybaFatimaNasir/api-testing-mastery/actions/workflows/api-automation.yml)
 ![OpenAPI 3.0](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?logo=openapi-initiative&logoColor=white)
 ![Swagger UI](https://img.shields.io/badge/Swagger-UI-85EA2D?logo=swagger&logoColor=black)
-![Bruno](https://img.shields.io/badge/Bruno-Collection-F97316)
-![Postman](https://img.shields.io/badge/Postman-v2.1-FF6C37?logo=postman&logoColor=white)
+![Newman](https://img.shields.io/badge/Newman-CLI%20Automated-FF6C37?logo=postman&logoColor=white)
+![Bruno CLI](https://img.shields.io/badge/Bruno-CLI%20Automated-F97316)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?logo=github-actions&logoColor=white)
 ![Tests](https://img.shields.io/badge/Tests-12%2F12%20Passing-brightgreen)
 ![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero%20(Native)-blue)
 
@@ -28,9 +30,13 @@ An end-to-end laboratory and reference project for learning, developing, and mas
 ## 📁 Repository Structure
 
 ```text
+├── .github/workflows/
+│   └── api-automation.yml        # GitHub Actions dual-matrix CI/CD pipeline
 ├── openapi.json                  # Formal OpenAPI 3.0.3 specification
 ├── server.ps1                    # Native REST API server with embedded Swagger UI
 ├── test-runner.ps1               # Automated 12-test CLI runner
+├── run-automation-suite.ps1      # Orchestrated automation runner (PowerShell + Newman + Bruno)
+├── package.json                  # NPM test automation scripts & CLI dependencies
 ├── publish-to-github.ps1         # Automated GitHub API publisher script
 ├── postman/
 │   ├── Products_API.postman_collection.json      # Postman test collection
@@ -116,6 +122,32 @@ You will see 12 automated tests execute across authentication, CRUD, and securit
    - `postman/Local_Environment.postman_environment.json`
 3. Select **Local API Testing Environment** in the environment dropdown.
 4. Click **Run collection** to run the complete automated test flow.
+
+### D. Headless CI/CD Automation Runner
+You can run all three test engines (Native PowerShell, Newman Postman CLI, and Bruno CLI) headlessly with a single command:
+```powershell
+.\run-automation-suite.ps1
+```
+Or run each runner individually:
+```powershell
+# 1. Native zero-dependency suite (12 stages)
+.\test-runner.ps1
+
+# 2. Newman Postman CLI with terminal output & HTML report
+npx newman run postman/Products_API.postman_collection.json -e postman/Local_Environment.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export test-reports/newman-report.html
+
+# 3. Bruno CLI headless runner
+npx @usebruno/cli run bruno --env local
+```
+
+---
+
+## ⚡ GitHub Actions Continuous Integration
+
+The repository includes a production-grade CI/CD pipeline at [`.github/workflows/api-automation.yml`](.github/workflows/api-automation.yml) configured with:
+- **Windows Native Job:** Bootstraps the zero-dependency PowerShell server in background, executes the native 12-stage test runner, runs Newman CLI with HTML extra reporter, and runs the Bruno CLI suite.
+- **Linux Express Job:** Tests cross-platform parity by spinning up the Express.js server on Ubuntu and running Newman and Bruno against it.
+- **Automated Artifacts & Summaries:** Publishes rich Markdown summaries to the GitHub Action run overview and archives downloadable HTML and JUnit test reports for every push and PR.
 
 ---
 

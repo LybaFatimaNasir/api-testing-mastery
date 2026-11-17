@@ -26,3 +26,9 @@ env/
 
 # Antigravity internal
 .gemini/
+
+# Test Reports & Automation Artifacts
+test-reports/
+*.html
+*.xml
+

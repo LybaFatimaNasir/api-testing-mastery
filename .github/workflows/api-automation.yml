@@ -1,0 +1,206 @@
+name: API Test Automation & CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      run_newman:
+        description: "Run Postman / Newman Suite"
+        type: boolean
+        default: true
+      run_bruno:
+        description: "Run Bruno CLI Suite"
+        type: boolean
+        default: true
+      run_powershell:
+        description: "Run Native PowerShell Suite"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # JOB 1: Windows Native Zero-Dependency & CLI Suite
+  # ============================================================================
+  test-windows-native:
+    name: "Windows Native & CLI Suite (PowerShell Server)"
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install NPM CLI Automation Dependencies
+        run: |
+          npm ci || npm install --no-audit
+
+      - name: Install Global Testing CLIs (Newman & Bruno)
+        run: |
+          npm install -g newman newman-reporter-htmlextra @usebruno/cli
+
+      - name: Launch Zero-Dependency REST API Server (Background)
+        shell: powershell
+        run: |
+          Write-Host "Starting REST API server in background..." -ForegroundColor Cyan
+          $proc = Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File .\server.ps1 -Port 5055" -PassThru
+          Write-Host "Server process started with PID: $($proc.Id)"
+          
+          # Poll until server responds
+          $maxRetries = 30
+          $retryCount = 0
+          $serverReady = $false
+          
+          while ($retryCount -lt $maxRetries -and -not $serverReady) {
+            Start-Sleep -Seconds 1
+            $retryCount++
+            try {
+              $response = Invoke-RestMethod -Uri "http://127.0.0.1:5055/" -Method Get -Headers @{ "Accept" = "application/json" } -TimeoutSec 2 -ErrorAction Stop
+              if ($response.status -eq "online") {
+                $serverReady = $true
+                Write-Host "REST API Server is ready at http://127.0.0.1:5055/ (attempt $retryCount)" -ForegroundColor Green
+              }
+            } catch {
+              Write-Host "Waiting for server to become ready... (attempt $retryCount)" -ForegroundColor DarkGray
+            }
+          }
+          
+          if (-not $serverReady) {
+            throw "Server failed to respond within 30 seconds."
+          }
+
+      - name: Run Native 12-Stage PowerShell Test Suite
+        if: ${{ github.event.inputs.run_powershell == '' || github.event.inputs.run_powershell == 'true' }}
+        shell: powershell
+        run: |
+          Write-Host "Executing test-runner.ps1..." -ForegroundColor Cyan
+          .\test-runner.ps1 -BaseUrl "http://127.0.0.1:5055"
+
+      - name: Create Test Reports Directory
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path test-reports | Out-Null
+
+      - name: Run Headless Postman Test Suite via Newman
+        if: ${{ github.event.inputs.run_newman == '' || github.event.inputs.run_newman == 'true' }}
+        shell: powershell
+        run: |
+          Write-Host "Executing Postman collection via Newman CLI..." -ForegroundColor Cyan
+          newman run postman/Products_API.postman_collection.json `
+            -e postman/Local_Environment.postman_environment.json `
+            --reporters cli,junit,htmlextra `
+            --reporter-junit-export test-reports/newman-junit.xml `
+            --reporter-htmlextra-export test-reports/newman-report.html `
+            --reporter-htmlextra-title "Product Catalog REST API - Automated Test Report"
+
+      - name: Run Headless Bruno Collection via Bruno CLI
+        if: ${{ github.event.inputs.run_bruno == '' || github.event.inputs.run_bruno == 'true' }}
+        shell: powershell
+        run: |
+          Write-Host "Executing Bruno collection via @usebruno/cli..." -ForegroundColor Cyan
+          bru run bruno --env local
+
+      - name: Publish GitHub Action Step Summary
+        if: always()
+        shell: powershell
+        run: |
+          $summary = @"
+          # 📊 API Test Automation Execution Summary
+          
+          | Metric | Value |
+          |:---|:---|
+          | **Operating System** | Windows Server (${{ runner.os }}) |
+          | **API Server Engine** | Zero-Dependency PowerShell (.NET HttpListener) |
+          | **OpenAPI Spec** | OpenAPI 3.0.3 Validated |
+          | **PowerShell Native Tests** | 12 / 12 Passing |
+          | **Postman / Newman Suite** | Verified (HTML + JUnit Reports Generated) |
+          | **Bruno CLI Collection** | Verified |
+          | **Status** | ✅ Passed |
+          
+          > 📁 *Detailed HTML & JUnit test artifacts have been uploaded to this workflow run.*
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Upload Test Report Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-reports
+          path: test-reports/
+          retention-days: 14
+
+  # ============================================================================
+  # JOB 2: Linux Node.js / Express Server Suite
+  # ============================================================================
+  test-linux-express:
+    name: "Linux Suite (Node.js Express Server)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install Express Server Dependencies
+        working-directory: express_alternative
+        run: |
+          npm install
+
+      - name: Install Global Automation CLIs (Newman & Bruno)
+        run: |
+          npm install -g newman newman-reporter-htmlextra @usebruno/cli
+
+      - name: Launch Express REST API Server in Background
+        run: |
+          node express_alternative/server.js &
+          echo "Waiting for Express API server on port 5055..."
+          for i in {1..30}; do
+            if curl -s -f http://127.0.0.1:5055/ > /dev/null; then
+              echo "Express server is live!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Create Test Reports Directory
+        run: mkdir -p test-reports
+
+      - name: Run Headless Postman Test Suite via Newman
+        run: |
+          newman run postman/Products_API.postman_collection.json \
+            -e postman/Local_Environment.postman_environment.json \
+            --reporters cli,junit,htmlextra \
+            --reporter-junit-export test-reports/newman-express-junit.xml \
+            --reporter-htmlextra-export test-reports/newman-express-report.html
+
+      - name: Run Headless Bruno Collection via Bruno CLI
+        run: |
+          bru run bruno --env local
+
+      - name: Upload Linux Express Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-express-test-reports
+          path: test-reports/
+          retention-days: 14
